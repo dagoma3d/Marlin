@@ -147,3 +147,7 @@ CMakeListsPrivate.txt
 
 #CLion
 cmake-build-*
+
+#Atom C autocomplete
+.clang_complete
+.gcc-flags.json
