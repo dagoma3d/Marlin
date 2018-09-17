@@ -505,12 +505,12 @@ void CardReader::checkautostart() {
     #endif
   ) {
     char autoname[10];
-    sprintf_P(autoname, PSTR("auto%i.g"), int(autostart_index));
+    sprintf_P(autoname, PSTR("dagoma%i.g"), int(autostart_index));
     dir_t p;
     root.rewind();
     while (root.readDir(&p, NULL) > 0) {
       for (int8_t i = (int8_t)strlen((char*)p.name); i--;) p.name[i] = tolower(p.name[i]);
-      if (p.name[9] != '~' && strncmp((char*)p.name, autoname, 5) == 0) {
+      if (p.name[9] != '~' && strncmp((char*)p.name, autoname, 7) == 0) {
         openAndPrintFile(autoname);
         autostart_index++;
         return;

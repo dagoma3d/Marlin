@@ -178,6 +178,10 @@ uint16_t max_display_update_time = 0;
   void lcd_control_menu();
   void lcd_control_temperature_menu();
   void lcd_control_motion_menu();
+  #if HAS_AUTOLEVEL
+    static void lcd_set_z_offsets();
+  #endif
+  static void lcd_prepare_advanced_menu();
 
   #if DISABLED(SLIM_LCD_MENUS)
     void lcd_control_temperature_preheat_material1_settings_menu();
@@ -1507,7 +1511,7 @@ void lcd_quick_feedback(const bool clear_buttons) {
     #if ENABLED(ADVANCED_PAUSE_FEATURE)
       #if E_STEPPERS == 1 && !ENABLED(FILAMENT_LOAD_UNLOAD_GCODES)
         if (thermalManager.targetHotEnoughToExtrude(active_extruder))
-          MENU_ITEM(gcode, MSG_FILAMENTCHANGE, PSTR("M600 B0"));
+          MENU_ITEM(gcode, MSG_FILAMENTCHANGE, PSTR("M600 PA"));
         else
           MENU_ITEM(submenu, MSG_FILAMENTCHANGE, lcd_temp_menu_e0_filament_change);
       #else
@@ -2663,7 +2667,86 @@ void lcd_quick_feedback(const bool clear_buttons) {
     #if ENABLED(DELTA)
       if (all_axes_homed())
     #endif
-        MENU_ITEM(submenu, MSG_MOVE_AXIS, lcd_move_menu);
+    MENU_ITEM(submenu, MSG_MOVE_AXIS, lcd_move_menu);
+
+    #if HAS_TEMP_HOTEND
+      //
+      // Preheat for Material 1
+      //
+      #if TEMP_SENSOR_1 != 0 || TEMP_SENSOR_2 != 0 || TEMP_SENSOR_3 != 0 || TEMP_SENSOR_4 != 0 || HAS_HEATED_BED
+        MENU_ITEM(submenu, MSG_PREHEAT_1, lcd_preheat_m1_menu);
+      #else
+        MENU_ITEM(function, MSG_PREHEAT_1, lcd_preheat_m1_e0_only);
+      #endif
+    #endif // HAS_TEMP_HOTEND
+
+    //
+    // Z-Offset
+    //
+    #if DISABLED(AUTO_BED_LEVELING_UBL) && HAS_LEVELING && DISABLED(SLIM_LCD_MENUS)
+      #if DISABLED(PROBE_MANUALLY)
+        //MENU_ITEM(gcode, MSG_LEVEL_BED, PSTR("G28\nG29"));
+        MENU_ITEM(submenu, MSG_Z_OFFSET, lcd_set_z_offsets);
+      #endif
+    #endif
+
+    //
+    // Change filament
+    //
+    #if ENABLED(ADVANCED_PAUSE_FEATURE)
+      if (!IS_SD_FILE_OPEN) {
+        #if E_STEPPERS == 1 && !ENABLED(FILAMENT_LOAD_UNLOAD_GCODES)
+          if (thermalManager.targetHotEnoughToExtrude(active_extruder))
+            MENU_ITEM(gcode, MSG_FILAMENTCHANGE, PSTR("M600 B0"));
+          else
+            MENU_ITEM(submenu, MSG_FILAMENTCHANGE, lcd_temp_menu_e0_filament_change);
+        #else
+          MENU_ITEM(submenu, MSG_FILAMENTCHANGE, lcd_change_filament_menu);
+        #endif
+      }
+    #endif // ADVANCED_PAUSE_FEATURE
+
+    #if HAS_TEMP_HOTEND
+      //
+      // Cooldown
+      //
+      bool has_heat = false;
+      HOTEND_LOOP() if (thermalManager.target_temperature[HOTEND_INDEX]) { has_heat = true; break; }
+      #if HAS_HEATED_BED
+        if (thermalManager.target_temperature_bed) has_heat = true;
+      #endif
+      if (has_heat) MENU_ITEM(function, MSG_COOLDOWN, lcd_cooldown);
+    #endif // HAS_TEMP_HOTEND
+
+    //
+    // BLTouch Self-Test and Reset
+    //
+    #if ENABLED(BLTOUCH)
+      MENU_ITEM(gcode, MSG_BLTOUCH_SELFTEST, PSTR("M280 P" STRINGIFY(Z_PROBE_SERVO_NR) " S" STRINGIFY(BLTOUCH_SELFTEST)));
+      if (!endstops.z_probe_enabled && TEST_BLTOUCH())
+        MENU_ITEM(gcode, MSG_BLTOUCH_RESET, PSTR("M280 P" STRINGIFY(Z_PROBE_SERVO_NR) " S" STRINGIFY(BLTOUCH_RESET)));
+    #endif
+
+    //
+    // Switch power on/off
+    //
+    #if HAS_POWER_SWITCH
+      if (powersupply_on)
+        MENU_ITEM(gcode, MSG_SWITCH_PS_OFF, PSTR("M81"));
+      else
+        MENU_ITEM(gcode, MSG_SWITCH_PS_ON, PSTR("M80"));
+    #endif
+
+    MENU_ITEM(submenu, MSG_PREPARE_ADVANCED, lcd_prepare_advanced_menu);
+
+    END_MENU();
+  }
+
+  float move_menu_scale;
+
+  void lcd_prepare_advanced_menu() {
+    START_MENU();
+    MENU_BACK(MSG_PREPARE);
 
     //
     // Auto Home
@@ -2697,10 +2780,6 @@ void lcd_quick_feedback(const bool clear_buttons) {
           MENU_ITEM(submenu, MSG_BED_LEVELING, lcd_bed_leveling);
 
     #elif HAS_LEVELING && DISABLED(SLIM_LCD_MENUS)
-
-      #if DISABLED(PROBE_MANUALLY)
-        MENU_ITEM(gcode, MSG_LEVEL_BED, PSTR("G28\nG29"));
-      #endif
       if (leveling_is_valid()) {
         bool new_level_state = planner.leveling_active;
         MENU_ITEM_EDIT_CALLBACK(bool, MSG_BED_LEVELING, &new_level_state, _lcd_toggle_bed_leveling);
@@ -2723,70 +2802,21 @@ void lcd_quick_feedback(const bool clear_buttons) {
       MENU_ITEM(function, MSG_SET_HOME_OFFSETS, lcd_set_home_offsets);
     #endif
 
+    #if HAS_TEMP_HOTEND
+      //
+      // Preheat for Material 2
+      //
+      #if TEMP_SENSOR_1 != 0 || TEMP_SENSOR_2 != 0 || TEMP_SENSOR_3 != 0 || TEMP_SENSOR_4 != 0 || HAS_HEATED_BED
+        MENU_ITEM(submenu, MSG_PREHEAT_2, lcd_preheat_m2_menu);
+      #else
+        MENU_ITEM(function, MSG_PREHEAT_2, lcd_preheat_m2_e0_only);
+      #endif
+    #endif // HAS_TEMP_HOTEND
+
     //
     // Disable Steppers
     //
     MENU_ITEM(gcode, MSG_DISABLE_STEPPERS, PSTR("M84"));
-
-    //
-    // Change filament
-    //
-    #if ENABLED(ADVANCED_PAUSE_FEATURE)
-      if (!IS_SD_FILE_OPEN) {
-        #if E_STEPPERS == 1 && !ENABLED(FILAMENT_LOAD_UNLOAD_GCODES)
-          if (thermalManager.targetHotEnoughToExtrude(active_extruder))
-            MENU_ITEM(gcode, MSG_FILAMENTCHANGE, PSTR("M600 B0"));
-          else
-            MENU_ITEM(submenu, MSG_FILAMENTCHANGE, lcd_temp_menu_e0_filament_change);
-        #else
-          MENU_ITEM(submenu, MSG_FILAMENTCHANGE, lcd_change_filament_menu);
-        #endif
-      }
-    #endif // ADVANCED_PAUSE_FEATURE
-
-    #if HAS_TEMP_HOTEND
-
-      //
-      // Cooldown
-      //
-      bool has_heat = false;
-      HOTEND_LOOP() if (thermalManager.target_temperature[HOTEND_INDEX]) { has_heat = true; break; }
-      #if HAS_HEATED_BED
-        if (thermalManager.target_temperature_bed) has_heat = true;
-      #endif
-      if (has_heat) MENU_ITEM(function, MSG_COOLDOWN, lcd_cooldown);
-
-      //
-      // Preheat for Material 1 and 2
-      //
-      #if TEMP_SENSOR_1 != 0 || TEMP_SENSOR_2 != 0 || TEMP_SENSOR_3 != 0 || TEMP_SENSOR_4 != 0 || HAS_HEATED_BED
-        MENU_ITEM(submenu, MSG_PREHEAT_1, lcd_preheat_m1_menu);
-        MENU_ITEM(submenu, MSG_PREHEAT_2, lcd_preheat_m2_menu);
-      #else
-        MENU_ITEM(function, MSG_PREHEAT_1, lcd_preheat_m1_e0_only);
-        MENU_ITEM(function, MSG_PREHEAT_2, lcd_preheat_m2_e0_only);
-      #endif
-
-    #endif // HAS_TEMP_HOTEND
-
-    //
-    // BLTouch Self-Test and Reset
-    //
-    #if ENABLED(BLTOUCH)
-      MENU_ITEM(gcode, MSG_BLTOUCH_SELFTEST, PSTR("M280 P" STRINGIFY(Z_PROBE_SERVO_NR) " S" STRINGIFY(BLTOUCH_SELFTEST)));
-      if (!endstops.z_probe_enabled && TEST_BLTOUCH())
-        MENU_ITEM(gcode, MSG_BLTOUCH_RESET, PSTR("M280 P" STRINGIFY(Z_PROBE_SERVO_NR) " S" STRINGIFY(BLTOUCH_RESET)));
-    #endif
-
-    //
-    // Switch power on/off
-    //
-    #if HAS_POWER_SWITCH
-      if (powersupply_on)
-        MENU_ITEM(gcode, MSG_SWITCH_PS_OFF, PSTR("M81"));
-      else
-        MENU_ITEM(gcode, MSG_SWITCH_PS_ON, PSTR("M80"));
-    #endif
 
     //
     // Autostart
@@ -2804,8 +2834,6 @@ void lcd_quick_feedback(const bool clear_buttons) {
 
     END_MENU();
   }
-
-  float move_menu_scale;
 
   #if ENABLED(DELTA_CALIBRATION_MENU) || ENABLED(DELTA_AUTO_CALIBRATION)
 
@@ -3146,6 +3174,135 @@ void lcd_quick_feedback(const bool clear_buttons) {
   void lcd_move_menu_10mm() { _goto_manual_move(10); }
   void lcd_move_menu_1mm()  { _goto_manual_move( 1); }
   void lcd_move_menu_01mm() { _goto_manual_move( 0.1f); }
+
+  #if HAS_AUTOLEVEL
+
+    static void _lcd_reinit_z_offsets_saved(){
+      START_MENU();
+
+      MENU_ITEM_DUMMY();
+      MENU_ITEM_DUMMY();
+      MENU_ITEM_DUMMY();
+      MENU_ITEM_DUMMY();
+
+      lcd_implementation_drawmenu_generic(0, 1, PSTR(MSG_PARAMETERS), ' ', ' ');
+      lcd_implementation_drawmenu_generic(0, 2, PSTR(MSG_SAVED), ' ', ' ');
+
+      encoderLine = 4;
+      MENU_ITEM(submenu, MSG_LCD_OK, lcd_return_to_status);
+
+
+      END_MENU();
+    }
+
+    static void _lcd_reinit_z_offsets_wait(){
+      START_MENU();
+
+      lcd_implementation_drawmenu_generic(0, 2, PSTR(MSG_PLEASE_WAIT), ' ', ' ');
+
+      END_MENU();
+    }
+
+    static void _lcd_reinit_z_offsets_save_back(){
+      lcd_goto_screen(_lcd_reinit_z_offsets_wait);
+
+      zprobe_zoffset = current_position[Z_AXIS];
+
+      lcd_store_settings();
+      // M84 #Disable motors to encure Z_SAFE_HOMING
+      // G0 Z0 #Automatic origin: needed to take the z value into account
+      enqueue_and_echo_commands_P(PSTR("M84\nG28\nG0 Z0"));
+
+      defer_return_to_status = false;
+      lcd_goto_screen(_lcd_reinit_z_offsets_saved);
+    }
+
+    static void _lcd_move_callback_with_offset() {
+      ENCODER_DIRECTION_NORMAL();
+      if (encoderPosition && planner.movesplanned() <= 3) {
+        reset_stepper_timeout();
+        current_position[Z_AXIS] += float((int32_t)encoderPosition) * move_menu_scale;
+        #if ENABLED(MIN_SOFTWARE_ENDSTOPS)
+          NOLESS(current_position[Z_AXIS], Z_PROBE_OFFSET_RANGE_MIN);
+        #endif
+        #if ENABLED(MAX_SOFTWARE_ENDSTOPS)
+          NOMORE(current_position[Z_AXIS], Z_PROBE_OFFSET_RANGE_MAX);
+        #endif
+        line_to_current_z();
+        lcdDrawUpdate = LCDVIEW_REDRAW_NOW;
+      }
+      encoderPosition = 0;
+      if (lcdDrawUpdate) lcd_implementation_drawedit(PSTR(MSG_MOVE_Z), ftostr52(current_position[Z_AXIS]));
+      if (use_click()) _lcd_reinit_z_offsets_save_back();
+    }
+
+    static void _lcd_reinit_z_offsets_zConfig(){
+
+      lcd_implementation_drawmenu_generic(0, 0, PSTR(MSG_PINCH), ' ', ' ');
+      lcd_implementation_drawmenu_generic(0, 1, PSTR(MSG_SET_OFFSET), ' ', ' ');
+
+      //lcd_move_z();
+      move_menu_scale = 0.05;
+      _lcd_move_callback_with_offset();
+
+      lcd_implementation_drawmenu_generic(0, 4, PSTR(MSG_VALIDATE), ' ', ' ');
+    }
+
+    static void _lcd_reinit_z_offsets_screenSheet(){
+      START_MENU();
+
+      MENU_ITEM_DUMMY();
+      MENU_ITEM_DUMMY();
+      MENU_ITEM_DUMMY();
+      MENU_ITEM_DUMMY();
+
+      lcd_implementation_drawmenu_generic(0, 0, PSTR(MSG_ADD_SHEET), ' ', ' ');
+      lcd_implementation_drawmenu_generic(0, 1, PSTR(MSG_BESIDE_NOZZLE), ' ', ' ');
+      lcd_implementation_drawmenu_generic(0, 2, PSTR(MSG_CLICK_OK), ' ', ' ');
+      //_drawLineNr = 3;
+      encoderLine = 4;
+      MENU_ITEM(submenu, "OK", _lcd_reinit_z_offsets_zConfig);
+
+      END_MENU();
+    }
+
+    static void lcd_reinit_z_offsets(){
+      lcd_goto_screen(_lcd_reinit_z_offsets_wait);
+
+      defer_return_to_status = true;
+
+      zprobe_zoffset = 0;
+      lcd_store_settings();
+      // M84 #Disable motors to encure Z_SAFE_HOMING
+      // G0 Z0 #Automatic origin: needed to take the z value into account
+      enqueue_and_echo_commands_P(PSTR("M84\nG28"));
+
+      lcd_goto_screen(_lcd_reinit_z_offsets_screenSheet);
+    }
+
+    static void lcd_set_z_offsets_save_config() {
+      lcd_store_settings();
+      // M84 #Disable motors to encure Z_SAFE_HOMING
+      // G0 Z0 #Automatic origin: needed to take the z value into account
+      enqueue_and_echo_commands_P(PSTR("M84\nG28\nG0 Z0"));
+    }
+
+    static void lcd_set_z_offsets() {
+      START_MENU();
+      MENU_ITEM(back, MSG_PREPARE, 0);
+
+      MENU_ITEM(function, MSG_REINIT, lcd_reinit_z_offsets);
+      //zprobe_zoffset = -4.0;
+      //lcd_store_settings();
+      //enqueue_and_echo_commands_P(PSTR("G28")); //origine auto
+      //lcd_move_z();
+
+      MENU_ITEM_EDIT_CALLBACK(float52, MSG_ZPROBE_ZOFFSET, &zprobe_zoffset, Z_PROBE_OFFSET_RANGE_MIN, Z_PROBE_OFFSET_RANGE_MAX, lcd_set_z_offsets_save_config);
+
+      END_MENU();
+    }
+
+  #endif
 
   void _lcd_move_distance_menu(const AxisEnum axis, const screenFunc_t func) {
     _manual_move_func_ptr = func;
@@ -5167,10 +5324,7 @@ void lcd_update() {
       if (sd_status) {
         safe_delay(500); // Some boards need a delay to get settled
         card.initsd();
-        if (old_sd_status == 2)
-          card.beginautostart();  // Initial boot
-        else
-          LCD_MESSAGEPGM(MSG_SD_INSERTED);
+        if (old_sd_status != 2) LCD_MESSAGEPGM(MSG_SD_INSERTED);
       }
       else {
         card.release();

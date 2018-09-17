@@ -104,6 +104,8 @@
   #include "pins_MKS_BASE_15.h"       // ATmega1280, ATmega2560                     env:megaatmega1280 env:megaatmega2560
 #elif MB(MKS_BASE_HEROIC)
   #include "pins_MKS_BASE_HEROIC.h"   // ATmega1280, ATmega2560                     env:megaatmega1280 env:megaatmega2560
+#elif MB(MKS_DAGOMA)
+  #include "pins_MKS_DAGOMA.h"        // ATmega1280, ATmega2560                     env:megaatmega1280 env:megaatmega2560
 #elif MB(MKS_GEN_13)
   #include "pins_MKS_GEN_13.h"        // ATmega1280, ATmega2560                     env:megaatmega1280 env:megaatmega2560
 #elif MB(MKS_GEN_L)

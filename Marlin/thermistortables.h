@@ -86,6 +86,12 @@
 #if ANY_THERMISTOR_IS(15) // JGAurora A5 thermistor calibration
   #include "thermistortable_15.h"
 #endif
+#if ANY_THERMISTOR_IS(17) // 100k thermistor alternative ATC Semitec 104GT-2 (4.7k pullup) Dagoma version (measured/tested/approved)
+  #include "thermistortable_17.h"
+#endif
+#if ANY_THERMISTOR_IS(18) // 100K thermistor - Semitec 104NT-4-16C054 (4,7k pullup)
+  #include "thermistortable_18.h"
+#endif
 #if ANY_THERMISTOR_IS(20) // PT100 with INA826 amp on Ultimaker v2.0 electronics
   #include "thermistortable_20.h"
 #endif

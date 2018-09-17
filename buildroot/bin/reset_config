@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+git checkout Marlin/Configuration.h
+git checkout Marlin/Configuration_adv.h
+
+if [ -f Marlin/_Bootscreen.h ]; then
+  rm Marlin/_Bootscreen.h
+fi

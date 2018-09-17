@@ -151,3 +151,7 @@ cmake-build-*
 #Atom C autocomplete
 .clang_complete
 .gcc-flags.json
+
+/Marlin/_Bootscreen.h
+
+Marlin/example_configurations/dagoma

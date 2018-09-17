@@ -14680,6 +14680,10 @@ void setup() {
   #if ENABLED(USE_WATCHDOG)
     watchdog_init();
   #endif
+
+  #if ENABLED(SDSUPPORT) && DISABLED(ULTRA_LCD)
+    card.beginautostart();
+  #endif
 }
 
 /**
