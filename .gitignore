@@ -153,5 +153,3 @@ cmake-build-*
 .gcc-flags.json
 
 /Marlin/_Bootscreen.h
-
-Marlin/example_configurations/dagoma
