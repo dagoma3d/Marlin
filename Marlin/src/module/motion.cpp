@@ -1284,6 +1284,11 @@ void do_homing_move(const AxisEnum axis, const float distance, const feedRate_t 
   }
 
   const feedRate_t real_fr_mm_s = fr_mm_s ?: homing_feedrate(axis);
+  
+  #if HAS_FSR_ADC
+    if (axis == Z_AXIS && distance < 0) thermalManager.resetThreshold();
+  #endif
+
   #if IS_SCARA
     // Tell the planner the axis is at 0
     current_position[axis] = 0;

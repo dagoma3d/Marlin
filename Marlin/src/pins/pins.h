@@ -166,8 +166,8 @@
   #include "ramps/pins_RAMPS_ENDER_4.h"         // ATmega2560                             env:megaatmega2560
 #elif MB(RAMPS_CREALITY)
   #include "ramps/pins_RAMPS_CREALITY.h"        // ATmega2560                             env:megaatmega2560
-#elif MB(RAMPS_DAGOMA)
-  #include "ramps/pins_RAMPS_DAGOMA.h"          // ATmega2560                             env:megaatmega2560
+#elif MB(DAGOMA_F5)
+  #include "ramps/pins_DAGOMA_F5.h"             // ATmega2560                             env:megaatmega2560
 #elif MB(FYSETC_F6_13)
   #include "ramps/pins_FYSETC_F6_13.h"          // ATmega2560                             env:fysetc_f6_13
 #elif MB(DUPLICATOR_I3_PLUS)
